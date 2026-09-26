@@ -1,0 +1,8 @@
+{
+  "name": "Rewind",
+  "description": "Film and photograph library for Rewind, including POS, inventory, workshop bookings, and transaction tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

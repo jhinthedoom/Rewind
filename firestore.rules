@@ -1,0 +1,270 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && (
+        (request.auth.token.email.matches('.*@tokikobo\\.com$')) || 
+        request.auth.token.email_verified == true
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Entity Validations ---
+
+    function isValidUserProfile(data) {
+      return data.uid == request.auth.uid &&
+             data.branch in ['PG', 'BM', 'ALL'] &&
+             (data.role == 'staff' || (data.role == 'admin' && request.auth.token.get('email', '') == 'admin@tokikobo.com'));
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isTokiAdmin() {
+      return isSignedIn() && request.auth.token.get('email', '') == 'admin@tokikobo.com';
+    }
+
+    function isAdmin() {
+      return isTokiAdmin() || (isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    function getUserBranch() {
+      return (request.auth.token.get('email', '') == 'admin@tokikobo.com') ? 'ALL' :
+             (request.auth.token.get('email', '') == 'pg@tokikobo.com') ? 'PG' :
+             (exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.branch : 'BM');
+    }
+
+    function canAccessData(location) {
+      return isSignedIn() && (
+        isAdmin() ||
+        getUserBranch() == 'ALL' || 
+        getUserBranch() == location
+      );
+    }
+
+    function isValidProduct(data) {
+      return data.name is string && data.name.size() <= 200 &&
+             data.price is number && data.price >= 0 &&
+             (data.stock is int || data.stock is number) && data.stock >= 0 &&
+             data.location in ['PG', 'BM', 'ALL'] &&
+             (data.get('category', 'sale') in ['sale', 'base']) &&
+             (data.get('productCategory', '') is string) &&
+             (data.get('sku', '') is string) &&
+             (data.get('description', '') == '' || data.description is string) &&
+             (data.get('imageUrl', '') == '' || (data.imageUrl is string && data.imageUrl.size() <= 1000));
+    }
+
+    function isValidWorkshop(data) {
+      return data.name is string && data.name.size() <= 200 &&
+             data.totalPrice is number && data.totalPrice >= 0 &&
+             data.depositAmount is number && data.depositAmount >= 0 &&
+             data.location in ['PG', 'BM', 'ALL'] &&
+             (data.get('description', '') == '' || data.description is string) &&
+             (data.get('priceDisplay', '') == '' || data.priceDisplay is string) &&
+             (data.get('isVariablePrice', false) is bool);
+    }
+
+    function isValidBooking(data) {
+      return data.workshopId is string &&
+             data.customerName is string && data.customerName.size() <= 200 &&
+             data.date is string &&
+             data.status in ['pending', 'confirmed', 'settled', 'completed', 'cancelled', 'deleted', 'refunded'] &&
+             data.location in ['PG', 'BM'] &&
+             (data.get('customerPhone', '') is string) &&
+             (data.get('totalPrice', 0) is number) &&
+             (data.get('depositAmount', 0) is number) &&
+             (data.get('pax', 0) is int || data.get('pax', 0) is number) &&
+             (data.get('staffName', '') is string) &&
+             (data.get('depositPaid', false) is bool) &&
+             (data.get('balancePaid', false) is bool) &&
+             (data.get('paintingPieces', 0) is int || data.get('paintingPieces', 0) is number) &&
+             (data.get('paintingPrice', 0) is number) &&
+             (data.get('collectionMethod', 'bm') in ['bm', 'island', 'delivery'] || data.get('collectionMethod', null) == null) &&
+             (data.get('isCollected', false) is bool) &&
+             (data.get('readyForCollection', false) is bool) &&
+             (data.get('photoUrl', null) == null || data.photoUrl is string) &&
+             (data.get('photoPath', null) == null || data.photoPath is string) &&
+             (data.get('finishedPieces', []) is list) &&
+             (data.get('paintingInstructionsRemarks', '') is string) &&
+             (data.get('paintingInstructionsImage', null) == null || data.paintingInstructionsImage is string) &&
+             (data.get('notes', '') is string) &&
+             (data.get('deletedAt', null) == null || data.deletedAt is string);
+    }
+
+    function isValidTransaction(data) {
+      return data.type in ['sale', 'deposit', 'balance', 'refund', 'deleted'] &&
+             data.amount is number &&
+             data.timestamp is string &&
+             data.description is string &&
+             (data.get('location', 'BM') in ['PG', 'BM']) &&
+             (data.get('staffName', '') is string) &&
+             (data.get('relatedId', '') is string) &&
+             (data.get('productId', '') is string) &&
+             (data.get('quantity', 1) is int || data.get('quantity', 1) is number) &&
+             (data.get('unitPrice', 0) is number) &&
+             (data.get('customerName', '') is string) &&
+             (data.get('deletedAt', null) == null || data.deletedAt is string);
+    }
+
+    function isValidStaff(data) {
+      return data.name is string && data.name.size() >= 2 && data.name.size() <= 100 &&
+             data.branch in ['PG', 'BM', 'ALL'] &&
+             data.active is bool;
+    }
+
+    function isValidCommissionPayment(data) {
+      return data.staffId is string &&
+             data.staffName is string &&
+             data.amount is number &&
+             data.month is string &&
+             data.timestamp is string &&
+             data.location in ['PG', 'BM'];
+    }
+
+    function isValidExpense(data) {
+      return data.description is string && data.description.size() <= 1000 &&
+             data.amount is number && data.amount >= 0 &&
+             data.category is string && data.category.size() <= 128 &&
+             data.date is string &&
+             data.timestamp is string &&
+             data.location in ['PG', 'BM', 'ALL'] &&
+             (data.get('staffName', '') is string) &&
+             (data.get('spendingType', 'Expenses') in ['Expenses', 'Current Asset', 'Non-Current Asset', 'Current Liability', 'Non-Current Liability']);
+    }
+
+    function isValidExpenseCategory(data) {
+      return data.name is string && data.name.size() <= 128 &&
+             data.createdAt is string &&
+             (data.get('spendingType', 'Expenses') in ['Expenses', 'Current Asset', 'Non-Current Asset', 'Current Liability', 'Non-Current Liability']);
+    }
+
+    function isValidBankConfig(data) {
+      return data.initialBalance is number;
+    }
+
+    function isValidTimesheet(data) {
+      return data.staffId is string &&
+             data.staffName is string &&
+             data.month is string &&
+             data.hourlyRate is number &&
+             data.entries is map &&
+             data.createdAt is string &&
+             data.lastUpdated is string;
+    }
+
+    // --- Collections ---
+
+    match /users/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && request.auth.uid == uid && 
+                     (incoming().get('role', 'staff') == existing().get('role', 'staff') || request.auth.token.get('email', '') == 'admin@tokikobo.com');
+      allow create: if isSignedIn() && request.auth.uid == uid && isValidUserProfile(incoming());
+      
+      allow read, write: if isSignedIn() && 
+                           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    match /staff/{staffId} {
+      allow read: if isSignedIn();
+      allow write: if isVerified() && isAdmin() && isValidStaff(incoming());
+    }
+
+    match /products/{productId} {
+      allow read: if isSignedIn() && canAccessData(resource.data.get('location', 'BM'));
+      allow create: if isVerified() && isValidId(productId) && isValidProduct(incoming()) && canAccessData(incoming().location);
+      allow update: if isVerified() && isValidProduct(incoming()) && canAccessData(existing().get('location', 'BM')) && canAccessData(incoming().location);
+      allow delete: if isSignedIn() && canAccessData(existing().get('location', 'BM'));
+    }
+
+    match /workshops/{workshopId} {
+      allow read: if isSignedIn();
+      allow create: if isVerified() && isValidId(workshopId) && isValidWorkshop(incoming()) && isAdmin();
+      allow update: if isVerified() && isValidWorkshop(incoming()) && isAdmin();
+      allow delete: if isVerified() && isAdmin();
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if isSignedIn() && canAccessData(resource.data.get('location', 'BM'));
+      allow create: if isVerified() && isValidId(bookingId) && isValidBooking(incoming()) && canAccessData(incoming().location);
+      allow update: if isVerified() && isValidBooking(incoming()) && canAccessData(existing().get('location', 'BM')) && canAccessData(incoming().location);
+      allow delete: if isSignedIn() && canAccessData(existing().get('location', 'BM'));
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isSignedIn() && canAccessData(resource.data.get('location', 'BM'));
+      allow create: if isVerified() && isValidId(transactionId) && isValidTransaction(incoming()) && canAccessData(incoming().location);
+      allow update: if isVerified() && isValidTransaction(incoming()) && canAccessData(existing().get('location', 'BM'));
+      allow delete: if isSignedIn() && canAccessData(existing().get('location', 'BM'));
+    }
+
+    match /commissionPayments/{paymentId} {
+      allow read: if isSignedIn() && canAccessData(resource.data.get('location', 'BM'));
+      allow create: if isVerified() && isAdmin() && isValidCommissionPayment(incoming()) && canAccessData(incoming().location);
+      allow update, delete: if false;
+    }
+
+    match /expenses/{expenseId} {
+      allow read: if isSignedIn();
+      allow create: if isVerified() && isValidExpense(incoming()) && (
+        isAdmin() ||
+        getUserBranch() == 'ALL' ||
+        incoming().get('location', 'BM') == getUserBranch() ||
+        incoming().get('location', 'BM') == 'ALL'
+      );
+      allow update: if isVerified() && isValidExpense(incoming()) && (
+        isAdmin() ||
+        getUserBranch() == 'ALL' ||
+        existing().get('location', 'BM') == getUserBranch()
+      );
+      allow delete: if isSignedIn() && (
+        isAdmin() ||
+        getUserBranch() == 'ALL' ||
+        existing().get('location', 'BM') == getUserBranch()
+      );
+    }
+
+    match /expenseCategories/{categoryId} {
+      allow read: if isSignedIn();
+      allow create: if isVerified() && isValidExpenseCategory(incoming());
+      allow update: if isVerified() && isValidExpenseCategory(incoming());
+      allow delete: if isVerified();
+    }
+
+    match /bankConfig/{configId} {
+      allow read: if isSignedIn();
+      allow create, update: if isVerified() && isValidBankConfig(incoming());
+      allow delete: if isVerified();
+    }
+
+    match /timesheets/{timesheetId} {
+      allow read: if isVerified() && isAdmin();
+      allow create, update: if isVerified() && isAdmin() && isValidTimesheet(incoming());
+      allow delete: if isVerified() && isAdmin();
+    }
+  }
+}

@@ -1,0 +1,237 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User account details and role/branch assignment",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "branch": { "type": "string", "enum": ["PG", "BM", "ALL"] },
+        "role": { "type": "string", "enum": ["admin", "staff"] }
+      },
+      "required": ["uid", "email", "branch", "role"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Pottery product for sale",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "stock": { "type": "integer" },
+        "imageUrl": { "type": "string" },
+        "location": { "type": "string", "enum": ["PG", "BM", "ALL"] },
+        "category": { "type": "string", "enum": ["base", "sale"] },
+        "productCategory": { "type": "string" },
+        "sku": { "type": "string" }
+      },
+      "required": ["name", "price", "stock", "location", "category"]
+    },
+    "Workshop": {
+      "title": "Workshop",
+      "description": "Workshop type offered by the studio",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "totalPrice": { "type": "number" },
+        "depositAmount": { "type": "number" },
+        "priceDisplay": { "type": "string" },
+        "isVariablePrice": { "type": "boolean" },
+        "location": { "type": "string", "enum": ["PG", "BM", "ALL"] }
+      },
+      "required": ["name", "totalPrice", "depositAmount", "location"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "A workshop registration for a customer",
+      "type": "object",
+      "properties": {
+        "workshopId": { "type": "string" },
+        "workshopName": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "settled", "completed", "cancelled"] },
+        "depositPaid": { "type": "boolean" },
+        "balancePaid": { "type": "boolean" },
+        "totalPrice": { "type": "number" },
+        "depositAmount": { "type": "number" },
+        "pax": { "type": "integer" },
+        "paintingPieces": { "type": "integer" },
+        "paintingPrice": { "type": "number" },
+        "collectionMethod": { "type": "string", "enum": ["bm", "island", "delivery"] },
+        "isCollected": { "type": "boolean" },
+        "readyForCollection": { "type": "boolean" },
+        "photoUrl": { "type": "string" },
+        "photoPath": { "type": "string" },
+        "finishedPieces": { 
+          "type": "array", 
+          "items": { 
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "photoUrl": { "type": "string" },
+              "remarks": { "type": "string" },
+              "createdAt": { "type": "string", "format": "date-time" }
+            }
+          }
+        },
+        "paintingInstructionsRemarks": { "type": "string" },
+        "paintingInstructionsImage": { "type": "string" },
+        "notes": { "type": "string" },
+        "location": { "type": "string", "enum": ["PG", "BM"] },
+        "staffName": { "type": "string" },
+        "recordingDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["workshopId", "customerName", "date", "status", "location"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial record of a sale or payment",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["sale", "deposit", "balance", "refund"] },
+        "amount": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "description": { "type": "string" },
+        "relatedId": { "type": "string" },
+        "productId": { "type": "string" },
+        "quantity": { "type": "integer" },
+        "unitPrice": { "type": "number" },
+        "customerName": { "type": "string" },
+        "location": { "type": "string", "enum": ["PG", "BM"] },
+        "staffName": { "type": "string" }
+      },
+      "required": ["type", "amount", "timestamp", "description", "location"]
+    },
+    "Staff": {
+      "title": "Staff",
+      "description": "Staff member details",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "branch": { "type": "string", "enum": ["PG", "BM", "ALL"] },
+        "active": { "type": "boolean" }
+      },
+      "required": ["name", "branch", "active"]
+    },
+    "CommissionPayment": {
+      "title": "Commission Payment",
+      "description": "Record of a commission payment to a staff member",
+      "type": "object",
+      "properties": {
+        "staffId": { "type": "string" },
+        "staffName": { "type": "string" },
+        "amount": { "type": "number" },
+        "month": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "location": { "type": "string", "enum": ["PG", "BM"] }
+      },
+      "required": ["staffId", "staffName", "amount", "month", "timestamp", "location"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Studio expenditure and asset procurement log",
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "date": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "location": { "type": "string", "enum": ["PG", "BM", "ALL"] },
+        "staffName": { "type": "string" },
+        "spendingType": { "type": "string", "enum": ["Expenses", "Current Asset", "Non-Current Asset", "Current Liability", "Non-Current Liability"] }
+      },
+      "required": ["description", "amount", "category", "date", "timestamp", "location"]
+    },
+    "ExpenseCategory": {
+      "title": "Expense Category",
+      "description": "Category list for tracking different kinds of expenses",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "spendingType": { "type": "string", "enum": ["Expenses", "Current Asset", "Non-Current Asset", "Current Liability", "Non-Current Liability"] }
+      },
+      "required": ["name", "createdAt"]
+    },
+    "BankConfig": {
+      "title": "Bank Configuration",
+      "description": "Starting bank statement balance",
+      "type": "object",
+      "properties": {
+        "initialBalance": { "type": "number" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      },
+      "required": ["initialBalance"]
+    },
+    "Timesheet": {
+      "title": "Staff Timesheet",
+      "description": "Monthly timesheet logs and salaries for staff members",
+      "type": "object",
+      "properties": {
+        "staffId": { "type": "string" },
+        "staffName": { "type": "string" },
+        "month": { "type": "string" },
+        "hourlyRate": { "type": "number" },
+        "normalHoursLimit": { "type": "number" },
+        "otMultiplier": { "type": "number" },
+        "holidayMultiplier": { "type": "number" },
+        "entries": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      },
+      "required": ["staffId", "staffName", "month", "hourlyRate", "entries", "createdAt", "lastUpdated"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "UserProfile",
+      "description": "User account data"
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Pottery products inventory"
+    },
+    "/workshops/{workshopId}": {
+      "schema": "Workshop",
+      "description": "Master list of workshops"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Individual workshop registrations"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Financial transaction history"
+    },
+    "/staff/{staffId}": {
+      "schema": "Staff",
+      "description": "Staff member records"
+    },
+    "/commissionPayments/{paymentId}": {
+      "schema": "CommissionPayment",
+      "description": "History of commission payments settled to staff"
+    },
+    "/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Logs of expenses and assets spending"
+    },
+    "/expenseCategories/{categoryId}": {
+      "schema": "ExpenseCategory",
+      "description": "Custom or default category filters for expenditure tracking"
+    },
+    "/bankConfig/{configId}": {
+      "schema": "BankConfig",
+      "description": "Starting bank statement balance"
+    },
+    "/timesheets/{timesheetId}": {
+      "schema": "Timesheet",
+      "description": "Monthly staff timesheet logs and holiday rates"
+    }
+  }
+}
